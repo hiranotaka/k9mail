@@ -9,6 +9,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.nio.charset.Charset;
 import java.util.*;
 
 public class MimeHeader
@@ -40,6 +41,7 @@ public class MimeHeader
     };
 
     protected ArrayList<Field> mFields = new ArrayList<Field>();
+    private String mCharset = null;
 
     public void clear()
     {
@@ -124,7 +126,10 @@ public class MimeHeader
                 {
                     v = EncoderUtil.encodeEncodedWord(
                             field.value,
-                            EncoderUtil.Usage.WORD_ENTITY
+                            EncoderUtil.Usage.WORD_ENTITY,
+                            0,
+                            Charset.forName(mCharset),
+                            null
                         );
                 }
 
@@ -171,5 +176,10 @@ public class MimeHeader
             sb.append(name).append('=').append(value).append(')');
             return sb.toString();
         }
+    }
+
+    public void setCharset(String charset)
+    {
+        mCharset = charset;
     }
 }

@@ -26,6 +26,8 @@ import java.util.Locale;
 
 import org.apache.james.mime4j.util.CharsetUtil;
 
+import com.fsck.k9.mail.internet.MimeUtility;
+
 /**
  * ANDROID:  THIS CLASS IS COPIED FROM A NEWER VERSION OF MIME4J
  */
@@ -327,11 +329,7 @@ public class EncoderUtil {
         if (charset == null)
             charset = determineCharset(text);
 
-        String mimeCharset = CharsetUtil.toMimeCharset(charset.name());
-        if (mimeCharset == null) {
-            // cannot happen if charset was originally null
-            throw new IllegalArgumentException("Unsupported charset");
-        }
+        String mimeCharset = MimeUtility.getExternalCharset(charset.name());
 
         byte[] bytes = encode(text, charset);
 

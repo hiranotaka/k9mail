@@ -503,6 +503,7 @@ public class MimeMessage extends Message
 
     public void setCharset(String charset) throws MessagingException
     {
+        mHeader.setCharset(charset);
         if (mBody instanceof Multipart)
         {
             ((Multipart)mBody).setCharset(charset);
