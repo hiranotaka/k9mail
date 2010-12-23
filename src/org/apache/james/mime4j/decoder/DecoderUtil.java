@@ -28,6 +28,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
+import com.fsck.k9.mail.Message;
+import com.fsck.k9.mail.MessagingException;
+import com.fsck.k9.mail.internet.MimeUtility;
+
+
 /**
  * Static methods for decoding strings, byte arrays and encoded words.
  *
@@ -47,10 +52,7 @@ public class DecoderUtil {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         
         try {
-            byte[] bytes = s.getBytes("US-ASCII");
-            
-            QuotedPrintableInputStream is = new QuotedPrintableInputStream(
-                                               new ByteArrayInputStream(bytes));
+            QuotedPrintableInputStream is = makeQuotedPrintableInputStream(s);
             
             int b = 0;
             while ((b = is.read()) != -1) {
@@ -66,6 +68,12 @@ public class DecoderUtil {
         return baos.toByteArray();
     }
     
+    private static QuotedPrintableInputStream makeQuotedPrintableInputStream(String s)
+    throws IOException {
+        byte[] bytes = s.getBytes("US-ASCII");
+        return new QuotedPrintableInputStream(new ByteArrayInputStream(bytes));
+    }
+
     /**
      * Decodes a string containing base64 encoded data. 
      * 
@@ -76,10 +84,7 @@ public class DecoderUtil {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         
         try {
-            byte[] bytes = s.getBytes("US-ASCII");
-            
-            Base64InputStream is = new Base64InputStream(
-                                        new ByteArrayInputStream(bytes));
+            Base64InputStream is = makeBase64InputStream(s);
             
             int b = 0;
             while ((b = is.read()) != -1) {
@@ -94,6 +99,12 @@ public class DecoderUtil {
         
         return baos.toByteArray();
     }
+
+    private static Base64InputStream makeBase64InputStream(String s) throws IOException {
+        byte[] bytes = s.getBytes("US-ASCII");
+        return new Base64InputStream(new ByteArrayInputStream(bytes));
+    }
+
     
     /**
      * Decodes an encoded word encoded with the 'B' encoding (described in 
@@ -107,8 +118,11 @@ public class DecoderUtil {
      */
     public static String decodeB(String encodedWord, String charset) 
             throws UnsupportedEncodingException {
-        
-        return new String(decodeBase64(encodedWord), charset);
+        try {
+            return MimeUtility.readToString(makeBase64InputStream(encodedWord), charset);
+        } catch (IOException e) {
+            return null;
+        }
     }
     
     /**
@@ -137,7 +151,11 @@ public class DecoderUtil {
             }
         }
         
-        return new String(decodeBaseQuotedPrintable(sb.toString()), charset);
+        try {
+            return MimeUtility.readToString(makeQuotedPrintableInputStream(encodedWord), charset);
+        } catch (IOException e) {
+            return null;
+        }
     }
     
     /**
@@ -152,6 +170,10 @@ public class DecoderUtil {
      * @return the decoded string.
      */
     public static String decodeEncodedWords(String body) {
+        return decodeEncodedWords(body, null);
+    }
+
+    public static String decodeEncodedWords(String body, Message message) {
         
         // ANDROID:  Most strings will not include "=?" so a quick test can prevent unneeded
         // object creation.  This could also be handled via lazy creation of the StringBuilder.
@@ -191,7 +213,7 @@ public class DecoderUtil {
 
             String sep = body.substring(previousEnd, begin);
 
-            String decoded = decodeEncodedWord(body, begin, end);
+            String decoded = decodeEncodedWord(body, begin, end, message);
             if (decoded == null) {
                 sb.append(sep);
                 sb.append(body.substring(begin, end));
@@ -208,7 +230,8 @@ public class DecoderUtil {
     }
 
     // return null on error
-    private static String decodeEncodedWord(String body, int begin, int end) {
+    private static String decodeEncodedWord(String body, int begin, int end,
+                                            Message message) {
         int qm1 = body.indexOf('?', begin + 2);
         if (qm1 == end - 2)
             return null;
@@ -221,21 +244,10 @@ public class DecoderUtil {
         String encoding = body.substring(qm1 + 1, qm2);
         String encodedText = body.substring(qm2 + 1, end - 2);
 
-        String charset = CharsetUtil.toJavaCharset(mimeCharset);
-        if (charset == null) {
-            if (log.isWarnEnabled()) {
-                log.warn("MIME charset '" + mimeCharset + "' in encoded word '"
-                        + body.substring(begin, end) + "' doesn't have a "
-                        + "corresponding Java charset");
-            }
-            return null;
-        } else if (!CharsetUtil.isDecodingSupported(charset)) {
-            if (log.isWarnEnabled()) {
-                log.warn("Current JDK doesn't support decoding of charset '"
-                        + charset + "' (MIME charset '" + mimeCharset
-                        + "' in encoded word '" + body.substring(begin, end)
-                        + "')");
-            }
+        String charset;
+        try {
+            charset = MimeUtility.fixupCharset(mimeCharset, message);
+        } catch (MessagingException e) {
             return null;
         }
 

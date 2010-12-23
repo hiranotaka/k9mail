@@ -893,16 +893,27 @@ public class MimeUtility
 
     public static String decode(String s)
     {
+        return decode(s, null);
+    }
+
+    public static String decode(String s, Message message)
+    {
         if (s == null)
         {
             return null;
         }
-        return DecoderUtil.decodeEncodedWords(s);
+
+        return DecoderUtil.decodeEncodedWords(s, message);
     }
 
     public static String unfoldAndDecode(String s)
     {
-        return decode(unfold(s));
+        return unfoldAndDecode(s, null);
+    }
+
+    public static String unfoldAndDecode(String s, Message message)
+    {
+        return decode(unfold(s), message);
     }
 
     // TODO implement proper foldAndEncode
@@ -1271,7 +1282,7 @@ public class MimeUtility
         return null;
     }
 
-    private static String fixupCharset(String charset, Message message) throws MessagingException
+    public static String fixupCharset(String charset, Message message) throws MessagingException
     {
         if (charset == null || "0".equals(charset))
             charset = "US-ASCII";  // No encoding, so use us-ascii, which is the standard.
@@ -1382,7 +1393,7 @@ public class MimeUtility
         return null;
     }
 
-    private static String readToString(InputStream in, String charset) throws IOException
+    public static String readToString(InputStream in, String charset) throws IOException
     {
         boolean isIphoneString = false;
 
